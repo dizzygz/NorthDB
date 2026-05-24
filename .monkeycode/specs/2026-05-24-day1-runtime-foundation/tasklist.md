@@ -25,6 +25,18 @@
   - [ ] 3A.4 Add reserved parallel exchange interface headers in `src/executor`
   - [ ] 3A.5 Add unit tests for wait-event type stability and header-level compile coverage
 
+- [ ] 3B. Define optimizer and memory-governance interfaces
+  - [ ] 3B.1 Add shared memory-pool classification types in `src/common`
+  - [ ] 3B.2 Add reserved optimizer interface headers in `src/optimizer`
+  - [ ] 3B.3 Add reserved memory-broker interface headers in `src/memory`
+  - [ ] 3B.4 Add unit tests for memory-pool type stability and header-level compile coverage
+
+- [ ] 3C. Define storage-placement interfaces
+  - [ ] 3C.1 Add shared storage identity aliases in `src/common`
+  - [ ] 3C.2 Add reserved tablespace and storage-cost interface headers in `src/storage`
+  - [ ] 3C.3 Add reserved tablespace catalog interface headers in `src/catalog`
+  - [ ] 3C.4 Add unit tests for storage-identity type stability and header-level compile coverage
+
 - [ ] 4. Implement memory foundation interfaces
   - [ ] 4.1 Add the `MemoryContext` base interface
   - [ ] 4.2 Add a simple heap-backed memory-context implementation for bootstrap testing

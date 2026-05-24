@@ -69,3 +69,59 @@ The current design baseline distinguishes three concurrency domains:
 3. parallel exchange queues
 
 Future implementation tasks should preserve this split in APIs, ownership, and diagnostics.
+
+Future implementation tasks should also keep session wait state and agent occupancy as separate observable concepts.
+
+## Optimizer and Memory Guidance
+
+The current design baseline also reserves:
+
+1. a statistics-driven cost-based optimizer architecture
+2. a named memory-pool model for shared and transient consumers
+3. a future memory-broker boundary for grant and budget management
+
+Future implementation tasks should keep optimizer, statistics, plan-cache, and memory-governance concepts explicit rather than folding them into unrelated modules.
+
+Future implementation tasks should also keep durable session memory, transaction memory, transient agent runtime memory, and future exchange-buffer memory distinct.
+
+## Session and Agent Guidance
+
+The current design baseline also reserves:
+
+1. durable `Session` state independent of a continuously attached worker
+2. pooled `Agent` capacity for active work
+3. request-scoped coordinator roles carried by attached agents
+4. future worker or subagent roles for local parallel or partition-local execution
+
+Future implementation tasks should preserve explicit attach and detach boundaries between session state and execution workers.
+
+## Storage Placement Guidance
+
+The current design baseline also reserves:
+
+1. tablespace abstractions for logical object placement
+2. storage-class abstractions for summarized media behavior
+3. storage cost profiles that can be consumed by the optimizer
+
+Future implementation tasks should keep raw physical device topology inside the storage engine while exposing summarized cost parameters to planning and explain output.
+
+## Heap and Index Guidance
+
+The current design baseline also reserves:
+
+1. stable tuple identity for future heap storage
+2. page-oriented B+ tree secondary indexes
+3. tuple revalidation on future index probe paths when row placement and index cleanup can diverge
+4. clustering, fragmentation, and cleanup-backlog metadata as future planning and maintenance inputs
+
+Future implementation tasks should preserve a clean separation between lookup correctness and physical cleanup so that background maintenance can evolve independently.
+
+## Day 1 Storage Deferrals
+
+The current Day 1 baseline explicitly defers:
+
+1. MDC-style multidimensional clustered layouts
+2. ITC-style insert-time clustered layouts
+3. BID-oriented block indexes
+4. global partition-spanning indexes
+5. full online index defragmentation utilities

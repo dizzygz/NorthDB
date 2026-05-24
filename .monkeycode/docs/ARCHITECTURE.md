@@ -43,6 +43,12 @@ The Day 1 specification defines the following runtime boundaries:
 5. `EDU`
 6. `MemoryContext`
 
+The runtime direction now also treats `Session` and `Agent` as different resource classes:
+
+1. `Session` is durable logical client state
+2. `Agent` is pooled execution capacity attached only while work is active
+3. future coordinator and subagent roles are execution roles carried by agents rather than permanent client-thread ownership
+
 ## Concurrency Domains
 
 The architecture now distinguishes three different concurrency domains:
@@ -56,6 +62,105 @@ This split is based on DB2 lock and latch design lessons:
 1. locks protect logical data and may wait for transaction progress
 2. latches protect internal engine structures and must stay short-lived
 3. parallel execution queues can become their own contention domain and must be treated explicitly by the executor and optimizer
+
+The wait model also needs room for client-idle and future remote or partition-coordination waits so that session state and worker occupancy remain measurable as different resources.
+
+## Optimization and Memory Governance
+
+The architecture now also treats optimization and memory governance as core design domains.
+
+### Optimizer direction
+
+The future optimizer is intended to be:
+
+1. cost-based
+2. statistics-driven
+3. sensitive to query shape
+4. aware of access-path alternatives such as scans, probes, joins, exchange operators, and materialization boundaries
+
+Planned optimizer subcomponents include:
+
+1. statistics catalog
+2. cardinality estimator
+3. access-path enumerator
+4. cost model
+5. plan cache
+6. explain formatter
+
+### Memory-governance direction
+
+The future memory model is intended to distinguish:
+
+1. instance-shared memory
+2. database-shared memory
+3. session-private memory
+4. query-work memory
+5. utility-work memory
+
+The instance will later need a memory broker or governor, and each database runtime will later own named shared pools such as plan cache, catalog cache, lock memory, and buffer-pool bindings.
+
+The memory model now also reserves separate durable session memory, transaction memory, transient agent runtime memory, and future exchange-buffer memory.
+
+## Storage Placement and I/O Costing
+
+The architecture now also reserves optimizer-visible storage placement concepts.
+
+### Storage direction
+
+The future storage design should distinguish:
+
+1. logical tablespaces for object placement
+2. summarized storage classes for optimizer-visible media behavior
+3. storage cost profiles that feed scan, probe, and spill costing
+
+This follows a DB2-style lesson that table-space characteristics and I/O cost parameters can affect access-plan selection directly.
+
+## Heap and Index Direction
+
+The architecture now also reserves a baseline physical-organization model for tables and indexes.
+
+### Baseline storage structures
+
+The future engine should converge on:
+
+1. heap-organized tables with stable tuple identity
+2. page-oriented B+ tree secondary indexes
+3. tuple revalidation on index probe paths when row relocation or stale index entries are possible
+
+This direction supports deferred maintenance without sacrificing correctness.
+
+### Maintenance and clustering direction
+
+The future engine should also model physical organization as observable state:
+
+1. clustering quality should be visible to the optimizer
+2. index fragmentation should be visible to the optimizer and utility framework
+3. stale-index-entry cleanup backlog should be visible to background maintenance and diagnostics
+4. partitioned tables should support local partitioned indexes before global partition-spanning indexes
+
+Specialized layouts inspired by MDC and ITC are reserved for later milestones after the baseline heap and B+ tree path is stable.
+
+## Client-Server and Agent Direction
+
+The runtime now reserves a DB2-inspired client-server processing model.
+
+### Session and agent separation
+
+The future engine should support:
+
+1. many connected sessions with lower durable per-session overhead
+2. a bounded pool of foreground agents
+3. explicit session-to-agent attachment during active work
+4. detach-capable waits and post-response idle behavior
+
+### Coordinator and worker direction
+
+The future engine should support:
+
+1. a request-scoped coordinator role carried by an attached agent
+2. future worker or subagent roles for local parallel execution
+3. future partition-local agent pools for partitioned database execution
+4. fragment-oriented execution APIs that can evolve from single-node to partitioned routing
 
 ## Module Responsibilities
 
@@ -72,9 +177,11 @@ These interfaces are intended to be reused by runtime, memory, transaction, and 
 
 This module will hold the memory-context abstractions and related allocation infrastructure for instance, database, session, query, and operator-scoped memory ownership.
 
+It will later also host memory-governance interfaces such as shared memory-pool classes and memory-broker boundaries.
+
 ### `src/runtime`
 
-This module will hold instance lifecycle, database lifecycle, EDU abstractions, agent execution state, service management, interrupt handling, and runtime registries.
+This module will hold instance lifecycle, database lifecycle, EDU abstractions, session state, agent execution state, agent-pool boundaries, service management, interrupt handling, and runtime registries.
 
 ### `src/lock`
 
@@ -84,9 +191,25 @@ This module is reserved for logical concurrency control only. It will later hold
 
 This module is reserved for persistent data structures and internal synchronization primitives such as page and metadata latches. Buffer-pool metadata contention and page-level latch design will be handled here, separately from logical locking.
 
+It will later also host tablespace, storage-class, and storage-cost-profile abstractions used by both the storage engine and the optimizer.
+
+It will later also host stable tuple and page identity concepts, heap-row indirection or forwarding semantics, B+ tree index structures, and maintenance hooks for cleanup and defragmentation.
+
 ### `src/executor`
 
 This module will later contain explicit parallel exchange structures such as table queues and parallel execution policy objects. Queue contention is part of execution design and optimizer cost modeling.
+
+It will later also host coordinator-facing execution-fragment boundaries and future worker-fragment control vocabulary.
+
+### `src/optimizer`
+
+This module is reserved for statistics-driven access-path optimization, including cardinality estimation, cost modeling, access-path enumeration, plan caching, and explain output.
+
+The cost model will later also consume tablespace and storage-cost metadata for I/O-sensitive plan selection.
+
+It will later also consume clustering, fragmentation, and partition-local index metadata for heap and index access planning.
+
+It will later also consume fragment-placement and exchange-cost inputs for coordinator-to-worker planning.
 
 ### Supporting modules reserved by Day 1 scaffold
 

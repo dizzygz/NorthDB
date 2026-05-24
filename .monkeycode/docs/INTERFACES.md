@@ -36,6 +36,14 @@ Planned interfaces:
 1. `MemoryContext`
 2. bootstrap heap-backed memory context
 3. future arena and slab allocators
+4. future memory-broker and pool-class interfaces
+
+Planned memory-class direction also includes:
+
+1. durable session memory
+2. durable transaction memory
+3. transient agent runtime memory
+4. future exchange-buffer memory
 
 ### `src/runtime`
 
@@ -49,6 +57,12 @@ Planned interfaces:
 6. `ServiceManager`
 7. `RuntimeRegistry`
 8. `InterruptToken`
+
+Planned runtime direction also includes:
+
+1. future `AgentPool`
+2. future `CoordinatorContext`
+3. future session-state and execution-role types
 
 ### `src/lock`
 
@@ -66,6 +80,13 @@ Planned concurrency interfaces:
 1. `latch.h`
 2. `latch_guard.h`
 
+Planned physical-organization interfaces:
+
+1. stable tuple and page identity support
+2. future heap-row indirection or forwarding support
+3. future B+ tree index support
+4. future background cleanup and defragmentation hooks
+
 ### `src/executor`
 
 Planned parallel coordination interfaces:
@@ -73,9 +94,49 @@ Planned parallel coordination interfaces:
 1. `table_queue.h`
 2. `parallel_execution_policy.h`
 
+Planned execution-direction interfaces also include:
+
+1. future execution-fragment boundaries
+2. future coordinator-to-worker control vocabulary
+
+### `src/optimizer`
+
+Planned interfaces:
+
+1. `statistics_catalog.h`
+2. `cardinality_estimator.h`
+3. `access_path_enumerator.h`
+4. `cost_model.h`
+5. `plan_cache.h`
+6. `explain_formatter.h`
+
+### `src/storage`
+
+Planned placement and costing interfaces:
+
+1. `tablespace.h`
+2. `storage_class.h`
+3. `storage_cost_profile.h`
+
+### `src/catalog`
+
+Planned storage-metadata interface:
+
+1. `tablespace_catalog.h`
+
 ### `src/common`
 
 Shared concurrency support will later also include wait-event classification for lock, latch, queue, I/O, and log-flush waits.
+
+Shared concurrency support will later also include client and remote wait classes.
+
+Shared memory-governance support will later also include memory-pool classification types.
+
+Shared runtime support will later also include session-state and execution-role classification types.
+
+Shared storage support will later also include tablespace and storage-cost identity aliases.
+
+Shared storage support will later also include `TupleId` and `PageId` aliases.
 
 ### Reserved Day 1 module boundaries
 
