@@ -1,0 +1,35 @@
+# Task List
+
+## Day 1 Runtime Foundation
+
+- [ ] 1. Create repository runtime skeleton
+  - [x] 1.1 Create the Day 1 repository layout: `cmake`, `docs/architecture`, `src/{common,runtime,memory,network,catalog,storage,txn,lock,wal,recovery,executor,parser,optimizer,utility,replication}`, `tests/{unit,integration}`, and `tools`
+  - [ ] 1.2 Add core identity aliases and shared status types
+  - [ ] 1.3 Add initial CMake targets for runtime and memory modules
+
+- [ ] 2. Implement lifecycle state definitions
+  - [ ] 2.1 Add `InstanceState`, `DatabaseState`, and `AgentState` enums
+  - [ ] 2.2 Implement lifecycle transition validation helpers
+  - [ ] 2.3 Add unit tests for valid and invalid lifecycle transitions
+
+- [ ] 3. Implement runtime control interfaces
+  - [ ] 3.1 Add the `EDU` base interface and `EDUType` definitions
+  - [ ] 3.2 Add the `Service` base interface and `ServiceManager` skeleton
+  - [ ] 3.3 Add the `InterruptToken` and `RuntimeRegistry` skeletons
+  - [ ] 3.4 Add unit tests for service ordering and interruption behavior
+
+- [ ] 4. Implement memory foundation interfaces
+  - [ ] 4.1 Add the `MemoryContext` base interface
+  - [ ] 4.2 Add a simple heap-backed memory-context implementation for bootstrap testing
+  - [ ] 4.3 Add unit tests for usage, peak tracking, and limit enforcement
+
+- [ ] 5. Implement runtime ownership skeletons
+  - [ ] 5.1 Add `DBInstance` class skeleton and instance state handling
+  - [ ] 5.2 Add `DatabaseRuntime` class skeleton and database state handling
+  - [ ] 5.3 Add `Session` and `Agent` skeletons with attach and execute placeholders
+  - [ ] 5.4 Add unit tests for instance, database, and agent state flows
+
+- [ ] 6. Add architecture-facing documentation and developer bootstrap notes
+  - [ ] 6.1 Add repository-level architecture notes that reference the Day 1 runtime model
+  - [ ] 6.2 Add developer bootstrap notes for building and testing the runtime foundation
+  - [ ] 6.3 Verify the Day 1 spec stays aligned with the code skeleton names
