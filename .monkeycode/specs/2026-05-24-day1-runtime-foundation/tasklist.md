@@ -4,7 +4,7 @@
 
 - [ ] 1. Create repository runtime skeleton
   - [x] 1.1 Create the Day 1 repository layout: `cmake`, `docs/architecture`, `src/{common,runtime,memory,network,catalog,storage,txn,lock,wal,recovery,executor,parser,optimizer,utility,replication}`, `tests/{unit,integration}`, and `tools`
-  - [ ] 1.2 Add core identity aliases and shared status types
+  - [x] 1.2 Add core identity aliases and shared status types
   - [ ] 1.3 Add initial CMake targets for runtime and memory modules
 
 - [ ] 2. Implement lifecycle state definitions
@@ -17,6 +17,13 @@
   - [ ] 3.2 Add the `Service` base interface and `ServiceManager` skeleton
   - [ ] 3.3 Add the `InterruptToken` and `RuntimeRegistry` skeletons
   - [ ] 3.4 Add unit tests for service ordering and interruption behavior
+
+- [ ] 3A. Define concurrency-domain interfaces
+  - [ ] 3A.1 Add shared wait-event classification types in `src/common`
+  - [ ] 3A.2 Add reserved logical lock interface headers in `src/lock`
+  - [ ] 3A.3 Add reserved latch interface headers in `src/storage`
+  - [ ] 3A.4 Add reserved parallel exchange interface headers in `src/executor`
+  - [ ] 3A.5 Add unit tests for wait-event type stability and header-level compile coverage
 
 - [ ] 4. Implement memory foundation interfaces
   - [ ] 4.1 Add the `MemoryContext` base interface

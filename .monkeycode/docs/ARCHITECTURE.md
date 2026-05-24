@@ -43,11 +43,30 @@ The Day 1 specification defines the following runtime boundaries:
 5. `EDU`
 6. `MemoryContext`
 
+## Concurrency Domains
+
+The architecture now distinguishes three different concurrency domains:
+
+1. **Logical locks** in `src/lock` for user-visible data protection and transaction isolation
+2. **Internal latches** in future `src/storage` interfaces for short critical sections over shared engine memory
+3. **Parallel exchange queues** in future `src/executor` interfaces for coordinator and worker communication
+
+This split is based on DB2 lock and latch design lessons:
+
+1. locks protect logical data and may wait for transaction progress
+2. latches protect internal engine structures and must stay short-lived
+3. parallel execution queues can become their own contention domain and must be treated explicitly by the executor and optimizer
+
 ## Module Responsibilities
 
 ### `src/common`
 
-This module will hold shared foundational types used across the engine, including identifiers, status types, and common utilities.
+This module now holds the first shared foundational types used across the engine:
+
+1. shared identity aliases in `src/common/ids.h`
+2. shared status handling in `src/common/status.h`
+
+These interfaces are intended to be reused by runtime, memory, transaction, and storage modules in later tasks.
 
 ### `src/memory`
 
@@ -56,6 +75,18 @@ This module will hold the memory-context abstractions and related allocation inf
 ### `src/runtime`
 
 This module will hold instance lifecycle, database lifecycle, EDU abstractions, agent execution state, service management, interrupt handling, and runtime registries.
+
+### `src/lock`
+
+This module is reserved for logical concurrency control only. It will later hold lock modes, lock requests, lock management, escalation policy, and deadlock-aware transaction wait handling.
+
+### `src/storage`
+
+This module is reserved for persistent data structures and internal synchronization primitives such as page and metadata latches. Buffer-pool metadata contention and page-level latch design will be handled here, separately from logical locking.
+
+### `src/executor`
+
+This module will later contain explicit parallel exchange structures such as table queues and parallel execution policy objects. Queue contention is part of execution design and optimizer cost modeling.
 
 ### Supporting modules reserved by Day 1 scaffold
 

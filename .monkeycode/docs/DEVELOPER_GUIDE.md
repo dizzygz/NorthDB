@@ -47,3 +47,25 @@ tools/
 ```
 
 No runtime classes, types, build rules, or tests are part of task `1.1`.
+
+## Implemented Day 1 Tasks
+
+### Task `1.2`
+
+Task `1.2` adds shared common types:
+
+1. `src/common/ids.h`
+2. `src/common/status.h`
+3. `tests/unit/common_types_test.cpp`
+
+The task is verified with a direct C++20 compile-and-run unit test.
+
+## Concurrency Design Guidance
+
+The current design baseline distinguishes three concurrency domains:
+
+1. logical locks
+2. internal latches
+3. parallel exchange queues
+
+Future implementation tasks should preserve this split in APIs, ownership, and diagnostics.

@@ -90,6 +90,17 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 
 ### Requirement 8
 
+**User Story:** AS a database kernel engineer, I want a formal concurrency vocabulary that separates logical locks, internal latches, and parallel exchange coordination, so that future subsystems use the correct synchronization model.
+
+#### Acceptance Criteria
+
+1. THE runtime specification SHALL define logical locks as user-visible concurrency controls tied to transaction semantics.
+2. THE runtime specification SHALL define internal latches as short critical-section guards for shared engine memory structures.
+3. THE runtime specification SHALL define parallel exchange coordination as a separate execution-domain concern for worker and coordinator communication.
+4. THE runtime specification SHALL require wait observability to distinguish lock waits, latch waits, and queue waits.
+
+### Requirement 9
+
 **User Story:** AS a database kernel engineer, I want a Day 1 implementation breakdown, so that the runtime foundation can be built incrementally and tested.
 
 #### Acceptance Criteria
@@ -98,3 +109,4 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 2. THE Day 1 specification SHALL identify code skeletons that are in scope for implementation.
 3. THE Day 1 specification SHALL identify tests required for lifecycle, memory, service management, and interruption behavior.
 4. THE Day 1 specification SHALL define the Day 1 repository layout for code, tests, tools, and architecture documentation.
+5. THE Day 1 specification SHALL reserve interface boundaries for future lock, latch, and exchange-queue components.

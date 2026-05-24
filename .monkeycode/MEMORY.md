@@ -50,3 +50,25 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - Write appropriate tests for each implemented task and ensure tests pass before marking the task complete.
   - After completing a task, update `tasklist.md` from `[ ]` to `[x]` for that task.
   - After completing a task, sync project documentation via the `project-wiki` workflow.
+
+[Feature design workflow]
+- Date: 2026-05-24
+- Context: User defined the required workflow for turning rough feature ideas into formal requirement and design documents
+- Instructions:
+  - Use a spec-driven development workflow for feature design work.
+  - Generate feature requirements with EARS patterns and validate them against INCOSE semantic quality rules.
+  - Create design documents with sections for description, architecture, components and interfaces, data models, correctness properties, error handling, test strategy, and references.
+  - During feature-design work, read project docs from `.monkeycode/docs/`, scan related historical specs in `.monkeycode/specs/`, and understand existing code structure before finalizing requirements or design.
+  - Keep user interaction iterative and ask at most 3 clarifying questions per round when clarification is required.
+  - For parser or serializer features, explicitly include parser, serializer, pretty-printer, and round-trip validation requirements.
+
+[DB2 concurrency design guidance]
+- Date: 2026-05-24
+- Context: Derived from DB2 lock-management and latch-contention references during database architecture design
+- Category: 排错调试
+- Instructions:
+  - Keep logical locks, internal latches, and parallel exchange queues as separate concurrency domains in both APIs and observability.
+  - Treat logical locks as transaction-visible isolation mechanisms with escalation and deadlock-aware waiting.
+  - Treat latches as short critical-section guards for internal shared-memory structures and keep blocking I/O and logical-lock waits out of latch critical sections.
+  - Treat parallel exchange queue contention as an executor and optimizer concern, especially for highly selective row-goal queries where parallel fan-out may hurt performance.
+  - Preserve wait-event diagnostics that distinguish lock waits, latch waits, queue waits, I/O waits, and log-flush waits.

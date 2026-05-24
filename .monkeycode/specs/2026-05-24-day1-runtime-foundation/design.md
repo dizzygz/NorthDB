@@ -17,6 +17,7 @@ The Day 1 runtime foundation introduces:
 6. Explicit C++ ownership rules
 7. Runtime registry and interruption control
 8. A minimal implementation and test plan
+9. A concurrency vocabulary that separates logical locks, internal latches, and parallel exchange coordination
 
 ## Architecture
 
@@ -33,8 +34,13 @@ graph TD
     I --> K["Database Runtime"]
     K --> L["Transaction Manager"]
     K --> M["Lock Manager"]
+    K --> Q["Latch Primitives"]
     K --> N["Catalog Runtime"]
     K --> O["Buffer Pool Binding"]
+    E --> R["Parallel Coordinator"]
+    R --> S["Table Queue"]
+    R --> T["Parallel Worker EDUs"]
+    O --> U["Buffer Metadata Latches"]
     H --> P["Background EDUs"]
     G --> D
     G --> P
@@ -50,6 +56,16 @@ The Day 1 runtime model is organized around four major scope boundaries:
 4. `QueryExecution`
 
 The system follows a DB2-inspired runtime model where the instance is the root operational boundary, database runtimes are activatable children, and both foreground and background engine work are represented through EDUs.
+
+### Concurrency domains
+
+The engine architecture must treat three concurrency domains as distinct design concerns:
+
+1. **Logical locks** for user-visible data protection and transaction isolation
+2. **Internal latches** for short critical sections over shared engine memory structures
+3. **Parallel exchange queues** for coordinator or worker communication during parallel execution
+
+These domains have different ownership, duration, observability, and failure behavior. The engine must keep them separated in both interfaces and metrics.
 
 ## Repository Layout
 
@@ -123,6 +139,7 @@ Responsibilities:
 3. Expose database-level transaction and lock systems
 4. Own the database memory root
 5. Support quiesce and deactivate flows
+6. Coordinate database-level logical locking and internal latch policy boundaries
 
 Core API:
 
@@ -140,6 +157,12 @@ public:
 ### 3. `EDU`
 
 `EDU` is the common execution abstraction for all engine work.
+
+Concurrency-related EDU roles include:
+
+1. Foreground agent execution that acquires logical locks through transaction-aware paths
+2. Background deadlock detection for logical lock waits
+3. Parallel worker execution that may contend on table queues and buffer metadata latches
 
 Foreground EDU examples:
 
@@ -182,6 +205,7 @@ Responsibilities:
 3. Attach to transaction state
 4. Enforce cancellation and timeout checks
 5. Report execution metrics and status
+6. Surface wait classification for lock waits, latch waits, queue waits, and other runtime waits
 
 Execution path:
 
@@ -202,7 +226,64 @@ Responsibilities:
 5. Current transaction binding
 6. Interrupt token root
 
-### 6. `MemoryContext`
+### 6. Logical locking model
+
+Logical locks protect user-visible data and schema resources.
+
+Design principles:
+
+1. Locks are owned by transaction or session state
+2. Locks are isolation-aware and waitable
+3. Locks participate in deadlock detection
+4. Lock scopes will later include row, page, table, and higher-level object scopes
+5. Lock escalation is a policy mechanism to trade concurrency for bounded lock-table pressure
+
+Initial reserved interfaces:
+
+```text
+src/lock/lock_mode.h
+src/lock/lock_request.h
+src/lock/lock_manager.h
+src/lock/lock_escalation_policy.h
+```
+
+### 7. Internal latch model
+
+Latches protect internal shared-memory structures such as buffer-pool metadata, queue state, and other high-frequency engine structures.
+
+Design principles:
+
+1. Latches are held for very short critical sections
+2. Latches are not transaction-visible resources
+3. Latches must not be held across blocking I/O
+4. Latches must not be held while waiting on logical locks
+5. Latch contention must be observable by latch class and protected structure
+
+Initial reserved interfaces:
+
+```text
+src/storage/latch.h
+src/storage/latch_guard.h
+```
+
+### 8. Parallel exchange coordination
+
+Parallel execution introduces an independent coordination domain through shared exchange queues.
+
+Design principles:
+
+1. Parallel workers communicate through bounded queue structures
+2. Queue contention must be treated as an execution and optimizer cost
+3. Highly selective row-goal queries should later suppress parallel fan-out when queue and latch overhead outweighs scan benefit
+
+Initial reserved interfaces:
+
+```text
+src/executor/table_queue.h
+src/executor/parallel_execution_policy.h
+```
+
+### 9. `MemoryContext`
 
 `MemoryContext` is the fundamental allocation, accounting, and cleanup abstraction.
 
@@ -222,7 +303,7 @@ public:
 };
 ```
 
-### 7. `ServiceManager`
+### 10. `ServiceManager`
 
 `ServiceManager` is responsible for lifecycle coordination of always-on engine services.
 
@@ -233,9 +314,17 @@ Responsibilities:
 3. Stop services in a defined order
 4. Propagate failures into runtime state
 
-### 8. `RuntimeRegistry` and `InterruptToken`
+### 11. `RuntimeRegistry` and `InterruptToken`
 
 `RuntimeRegistry` tracks active engine objects.
+
+The runtime registry and future diagnostics model must classify waits by domain, including:
+
+1. lock waits
+2. latch waits
+3. queue waits
+4. I/O waits
+5. log flush waits
 
 Tracked entity classes:
 
@@ -261,6 +350,19 @@ using SessionId = uint64_t;
 using TransactionId = uint64_t;
 using QueryId = uint64_t;
 using EduId = uint64_t;
+```
+
+### Wait-event vocabulary
+
+```cpp
+enum class WaitEventClass {
+    kNone,
+    kLock,
+    kLatch,
+    kQueue,
+    kIo,
+    kLogFlush
+};
 ```
 
 ### Instance state machine
@@ -336,10 +438,12 @@ InstanceMemoryContext
   |- DatabaseMemoryContext(db1)
   |    |- TxnSystemMemoryContext
   |    |- LockSystemMemoryContext
+  |    |- LatchSystemMemoryContext
   |    |- SessionMemoryContext(s1)
   |    |    |- QueryMemoryContext(q1)
   |    |    |    |- OperatorMemoryContext(scan)
   |    |    |    |- OperatorMemoryContext(hash_join)
+  |    |    |    |- OperatorMemoryContext(exchange_queue)
   |    |    |- QueryMemoryContext(q2)
   |    |- SessionMemoryContext(s2)
   |- DatabaseMemoryContext(db2)
@@ -355,6 +459,8 @@ InstanceMemoryContext
 4. Every active agent must be associated with at most one active request.
 5. Every database runtime must belong to exactly one instance.
 6. Every long-running operation must have an interrupt token.
+7. No logical lock wait may occur while a latch critical section is held.
+8. No blocking I/O may occur while a latch critical section is held.
 
 ### C++ ownership rules
 
@@ -369,6 +475,14 @@ InstanceMemoryContext
 2. Quiesce state stops admission of new work before shutdown continues.
 3. Session teardown must release session memory and detach active request state.
 4. Query teardown must release query and operator memory contexts.
+5. Wait reporting must preserve the distinction between lock, latch, and queue contention.
+
+### Concurrency-control invariants
+
+1. Logical locks and internal latches use separate APIs and ownership paths.
+2. Lock escalation later becomes policy-driven and observable.
+3. Parallel exchange queues later become explicit execution objects rather than implicit thread communication paths.
+4. Buffer-pool metadata latching later uses sharded or partitioned protection to reduce central contention.
 
 ## Error Handling
 
@@ -382,6 +496,11 @@ InstanceMemoryContext
 
 1. If a memory context exceeds a configured hard limit, the allocator returns an explicit failure.
 2. Query-scoped memory-limit breaches should later integrate with spill policies for sort and hash operators.
+
+### Concurrency errors
+
+1. Lock timeouts, deadlocks, and cancellation outcomes must be reported separately from latch contention.
+2. Parallel queue overload or queue shutdown must surface a dedicated execution failure status.
 
 ### Interruption errors
 
@@ -400,6 +519,7 @@ Required Day 1 unit-test targets:
 4. Memory context usage and peak tracking
 5. Interrupt token behavior
 6. Service manager start and stop ordering
+7. shared identity and status types
 
 ### Example test names
 
@@ -421,6 +541,12 @@ The following are intentionally out of scope for Day 1 implementation:
 4. Query optimizer internals
 5. Lock table implementation
 6. Executor operator implementation
+
+The following design obligations are introduced for later phases:
+
+1. Separate lock-manager and latch-layer implementations
+2. Observability for lock waits, latch waits, queue waits, and escalation
+3. Parallel-execution policy that suppresses costly exchange paths for row-goal selective plans
 
 ## References
 

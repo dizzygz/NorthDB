@@ -8,11 +8,26 @@ The repository currently exposes repository-level and module-level boundaries th
 
 ### `src/common`
 
-Planned interfaces:
+Current interfaces:
 
-1. shared identity aliases
-2. shared status types
-3. common utility helpers
+1. `ids.h` for shared identity aliases
+2. `status.h` for shared status types
+
+Defined identity aliases:
+
+1. `InstanceId`
+2. `DatabaseId`
+3. `SessionId`
+4. `TransactionId`
+5. `QueryId`
+6. `EduId`
+
+Defined shared status type:
+
+1. `Status::Ok()`
+2. `Status::Error(std::string_view)`
+3. `Status::ok()`
+4. `Status::message()`
 
 ### `src/memory`
 
@@ -34,6 +49,33 @@ Planned interfaces:
 6. `ServiceManager`
 7. `RuntimeRegistry`
 8. `InterruptToken`
+
+### `src/lock`
+
+Planned interfaces:
+
+1. `lock_mode.h`
+2. `lock_request.h`
+3. `lock_manager.h`
+4. `lock_escalation_policy.h`
+
+### `src/storage`
+
+Planned concurrency interfaces:
+
+1. `latch.h`
+2. `latch_guard.h`
+
+### `src/executor`
+
+Planned parallel coordination interfaces:
+
+1. `table_queue.h`
+2. `parallel_execution_policy.h`
+
+### `src/common`
+
+Shared concurrency support will later also include wait-event classification for lock, latch, queue, I/O, and log-flush waits.
 
 ### Reserved Day 1 module boundaries
 
