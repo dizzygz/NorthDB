@@ -90,6 +90,7 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 2. WHEN a long-running operation executes, the runtime specification SHALL require that operation to poll the interrupt token.
 3. THE runtime specification SHALL define a runtime registry for active sessions, agents, transactions, queries, utilities, and EDUs.
 4. THE runtime specification SHALL distinguish connected sessions, runnable sessions, waiting sessions, active agents, and idle pooled agents in runtime observability.
+5. THE runtime specification SHALL reserve structured diagnostic-log metadata sufficient to correlate runtime events by time, worker identity, subsystem, and probe site.
 
 ### Requirement 8
 
@@ -101,9 +102,21 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 2. THE runtime specification SHALL define internal latches as short critical-section guards for shared engine memory structures.
 3. THE runtime specification SHALL define parallel exchange coordination as a separate execution-domain concern for worker and coordinator communication.
 4. THE runtime specification SHALL require wait observability to distinguish lock waits, latch waits, and queue waits.
- 5. THE runtime specification SHALL reserve additional wait and suspend vocabulary for client-idle waits and future remote or partition-coordination waits.
+5. THE runtime specification SHALL reserve additional wait and suspend vocabulary for client-idle waits and future remote or partition-coordination waits.
 
 ### Requirement 9
+
+**User Story:** AS a database kernel engineer, I want an asynchronous diagnostic logging model, so that troubleshooting fidelity remains high without blocking critical execution paths during log storms or I/O stalls.
+
+#### Acceptance Criteria
+
+1. THE runtime specification SHALL define diagnostic logging as an asynchronous service rather than a foreground open-lock-write-close path.
+2. THE runtime specification SHALL require foreground publishers to enqueue into bounded preallocated buffers without performing diagnostic file open or close operations.
+3. THE runtime specification SHALL reserve a dedicated flusher service that writes diagnostic records by time, space, or severity-triggered policy.
+4. THE runtime specification SHALL require structured diagnostic records to carry sequence, timestamp, severity, component, worker identity, and probe-site metadata.
+5. THE runtime specification SHALL require overflow, suppression, and drop-accounting behavior to be explicit and observable.
+
+### Requirement 10
 
 **User Story:** AS a database kernel engineer, I want a formal optimizer vocabulary that includes statistics, access-path selection, and plan reuse, so that future query planning can be both explainable and cost-driven.
 
@@ -113,7 +126,7 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 2. THE runtime specification SHALL define optimizer dependence on catalog statistics and query shape.
 3. THE runtime specification SHALL require future plan diagnostics to expose enough information to explain access-path choices.
 
-### Requirement 10
+### Requirement 11
 
 **User Story:** AS a database kernel engineer, I want named shared and private memory classes, so that memory governance can distinguish durable engine pools from transient query work areas.
 
@@ -125,7 +138,7 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 4. THE runtime specification SHALL require future query work-memory consumers to execute under explicit grant or spill policies.
 5. THE runtime specification SHALL reserve durable session memory separately from transient agent runtime memory.
 
-### Requirement 11
+### Requirement 12
 
 **User Story:** AS a database kernel engineer, I want optimizer-visible storage placement metadata, so that access-path costing can account for I/O behavior and storage layout.
 
@@ -136,7 +149,7 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 3. THE runtime specification SHALL require future plan diagnostics to expose storage-derived costing inputs.
 4. THE runtime specification SHALL require future storage metadata changes to participate in plan review or invalidation workflows.
 
-### Requirement 12
+### Requirement 13
 
 **User Story:** AS a database kernel engineer, I want a coordinator and subagent execution vocabulary, so that single-node execution can evolve cleanly into pooled parallel and partitioned execution.
 
@@ -147,7 +160,7 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 3. THE runtime specification SHALL define the coordinator role independently from permanent thread ownership.
 4. THE runtime specification SHALL reserve partition-local agent-pool concepts for future partitioned database execution.
 
-### Requirement 13
+### Requirement 14
 
 **User Story:** AS a database kernel engineer, I want stable row and index identity concepts, so that future heap and index structures can support deferred maintenance without breaking lookup correctness.
 
@@ -158,7 +171,7 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 3. THE runtime specification SHALL require future index probes to support tuple revalidation when row indirection, relocation, or stale entries are possible.
 4. THE runtime specification SHALL reserve clustering and fragmentation metadata as optimizer-visible inputs.
 
-### Requirement 14
+### Requirement 15
 
 **User Story:** AS a database kernel engineer, I want a Day 1 implementation breakdown, so that the runtime foundation can be built incrementally and tested.
 
@@ -172,3 +185,4 @@ This specification defines the Day 1 runtime foundation for a serious C++ relati
 6. THE Day 1 specification SHALL reserve interface boundaries for future optimizer and memory-governance components.
 7. THE Day 1 specification SHALL reserve interface boundaries for future tablespace and storage-cost components.
 8. THE Day 1 specification SHALL identify Day 1 deferrals for specialized storage and indexing features including MDC-style layouts, ITC-style layouts, block indexes, global partition-spanning indexes, and full online defragmentation.
+9. THE Day 1 specification SHALL reserve interface and policy boundaries for asynchronous diagnostic logging, including buffering, flushing, suppression, and member-local log partitioning.

@@ -125,3 +125,15 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - Use English for all project context notes.
   - Use English for all user-facing interaction content in this project thread when producing project artifacts or structured task communication.
   - Use English for all design documents and related specification artifacts.
+
+[DB2 diagnostic logging guidance]
+- Date: 2026-05-24
+- Context: Derived from DB2 diagnostic log documentation and synchronous logging failure analysis during runtime observability design
+- Category: 排错调试
+- Instructions:
+  - Treat diagnostic logging as a dedicated asynchronous runtime service rather than a foreground open-lock-write-close helper path.
+  - Preserve structured diagnostic metadata including sequence, timestamps, severity, component, worker identity, and probe site for later investigation.
+  - Keep diagnostic publication on bounded preallocated buffers and move file I/O to a dedicated flusher worker.
+  - Use suppression, rate limiting, and explicit drop accounting to survive repeated client, SSL, and network failure storms.
+  - Keep diagnostic logs member-local in the distributed roadmap and rely on structured correlation metadata rather than file write order alone.
+  - Reserve crash-path emergency flush behavior that avoids dynamic allocation and non-essential lock acquisition.

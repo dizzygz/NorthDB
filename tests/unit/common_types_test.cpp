@@ -12,6 +12,11 @@ int main() {
     static_assert(std::is_same_v<northdb::common::TransactionId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::QueryId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::EduId, std::uint64_t>);
+    static_assert(std::is_same_v<northdb::common::TablespaceId, std::uint64_t>);
+    static_assert(std::is_same_v<northdb::common::StorageClassId, std::uint64_t>);
+    static_assert(std::is_same_v<northdb::common::StorageCostProfileId, std::uint64_t>);
+    static_assert(std::is_same_v<northdb::common::TupleId, std::uint64_t>);
+    static_assert(std::is_same_v<northdb::common::PageId, std::uint64_t>);
 
     const auto ok_status = northdb::common::Status::Ok();
     assert(ok_status.ok());

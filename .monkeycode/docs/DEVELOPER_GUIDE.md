@@ -4,6 +4,8 @@
 
 This project is in the Day 1 runtime-foundation bootstrap stage.
 
+Repository-facing bootstrap notes are published in `docs/architecture/bootstrap.md`.
+
 ## Implementation Workflow
 
 1. Read the relevant specification package under `.monkeycode/specs/`
@@ -72,6 +74,8 @@ Future implementation tasks should preserve this split in APIs, ownership, and d
 
 Future implementation tasks should also keep session wait state and agent occupancy as separate observable concepts.
 
+Future implementation tasks should also keep diagnostic publication off foreground file I/O paths.
+
 ## Optimizer and Memory Guidance
 
 The current design baseline also reserves:
@@ -84,6 +88,8 @@ Future implementation tasks should keep optimizer, statistics, plan-cache, and m
 
 Future implementation tasks should also keep durable session memory, transaction memory, transient agent runtime memory, and future exchange-buffer memory distinct.
 
+Future implementation tasks should also treat diagnostic ring-buffer memory and crash-path emergency logging memory as explicit bounded consumers.
+
 ## Session and Agent Guidance
 
 The current design baseline also reserves:
@@ -94,6 +100,18 @@ The current design baseline also reserves:
 4. future worker or subagent roles for local parallel or partition-local execution
 
 Future implementation tasks should preserve explicit attach and detach boundaries between session state and execution workers.
+
+## Diagnostic Logging Guidance
+
+The current design baseline also reserves:
+
+1. a dedicated asynchronous `DiagnosticLogService`
+2. bounded preallocated publish buffers with sequence-stamped records
+3. single-flusher member-local diagnostic files
+4. suppression, rate limiting, and explicit drop accounting for repeated event storms
+5. crash-path emergency flush behavior using preallocated memory only
+
+Future implementation tasks should preserve investigation-quality metadata even when final file write order differs from foreground event publication timing.
 
 ## Storage Placement Guidance
 

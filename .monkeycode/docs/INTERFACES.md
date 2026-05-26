@@ -12,6 +12,9 @@ Current interfaces:
 
 1. `ids.h` for shared identity aliases
 2. `status.h` for shared status types
+3. `wait_events.h` for shared wait-event classification
+4. `memory_pools.h` for shared memory-pool classification
+5. `diagnostics.h` for shared diagnostic record vocabulary
 
 Defined identity aliases:
 
@@ -21,6 +24,11 @@ Defined identity aliases:
 4. `TransactionId`
 5. `QueryId`
 6. `EduId`
+7. `TablespaceId`
+8. `StorageClassId`
+9. `StorageCostProfileId`
+10. `TupleId`
+11. `PageId`
 
 Defined shared status type:
 
@@ -31,12 +39,41 @@ Defined shared status type:
 
 ### `src/memory`
 
-Planned interfaces:
+Current reserved interfaces:
 
-1. `MemoryContext`
-2. bootstrap heap-backed memory context
-3. future arena and slab allocators
-4. future memory-broker and pool-class interfaces
+1. `memory_pool_budget.h`
+2. `memory_grant.h`
+3. `memory_broker.h`
+4. `diagnostic_buffer_memory.h`
+5. `memory_context.h`
+6. `heap_memory_context.h`
+7. future arena and slab allocators
+
+Current memory-broker boundary direction includes:
+
+1. named pool budget configuration
+2. query work-memory grant requests
+3. spill-aware grant results
+4. grant release boundaries
+
+Current diagnostic memory coverage includes:
+
+1. `DiagnosticBufferMemory`
+2. `DiagnosticEmergencyMemory`
+
+Current memory-context boundary includes:
+
+1. allocation with explicit alignment
+2. per-context deallocation
+3. reset for scoped cleanup
+4. usage, peak, and configured-limit introspection
+
+Current bootstrap implementation includes:
+
+1. heap-backed allocation using aligned operator new
+2. outstanding-allocation tracking for `Reset()` cleanup
+3. hard-limit enforcement through allocation failure
+4. usage and peak tracking across allocate, deallocate, and reset
 
 Planned memory-class direction also includes:
 
@@ -44,25 +81,64 @@ Planned memory-class direction also includes:
 2. durable transaction memory
 3. transient agent runtime memory
 4. future exchange-buffer memory
+5. bounded diagnostic-buffer memory
+6. crash-path diagnostic emergency memory
 
 ### `src/runtime`
 
-Planned interfaces:
+Current interfaces:
 
-1. `DBInstance`
-2. `DatabaseRuntime`
-3. `EDU`
-4. `Agent`
-5. `Session`
-6. `ServiceManager`
-7. `RuntimeRegistry`
-8. `InterruptToken`
+1. `db_instance.h`
+2. `database_runtime.h`
+3. `edu.h`
+4. `agent.h`
+5. `session.h`
+6. `service.h`
+7. `control.h`
+8. `states.h`
+9. `diagnostic_flush_policy.h`
+10. `diagnostic_log_service.h`
+
+Current reserved diagnostic runtime direction includes:
+
+1. publish boundaries for structured diagnostic headers
+2. explicit flush boundaries for member-local writers
+3. pluggable flush-decision policy boundaries
 
 Planned runtime direction also includes:
 
 1. future `AgentPool`
 2. future `CoordinatorContext`
 3. future session-state and execution-role types
+4. future `DiagnosticLogService`
+5. future structured diagnostic publish and flush policy types
+
+Current instance boundary includes:
+
+1. root memory ownership
+2. instance service registration and lifecycle coordination
+3. instance state transitions from create through stop
+
+Current database runtime boundary includes:
+
+1. database memory-root ownership
+2. database service registration and lifecycle coordination
+3. database state transitions from register through deactivate
+
+Current session and agent boundary includes:
+
+1. durable session identity and memory ownership
+2. session-root interrupt token access
+3. explicit agent attach and detach boundaries
+4. agent execution placeholder state transitions
+
+Current supporting runtime vocabulary includes:
+
+1. `InstanceState`
+2. `DatabaseState`
+3. `AgentState`
+4. `InterruptState`
+5. `EDUType`
 
 ### `src/lock`
 
@@ -87,6 +163,18 @@ Planned physical-organization interfaces:
 3. future B+ tree index support
 4. future background cleanup and defragmentation hooks
 
+Current reserved placement and costing interfaces:
+
+1. `tablespace.h`
+2. `storage_class.h`
+3. `storage_cost_profile.h`
+
+Current storage-placement boundary direction includes:
+
+1. logical tablespace identity
+2. summarized storage-class identity
+3. optimizer-visible storage-cost profile identity and metrics
+
 ### `src/executor`
 
 Planned parallel coordination interfaces:
@@ -101,7 +189,7 @@ Planned execution-direction interfaces also include:
 
 ### `src/optimizer`
 
-Planned interfaces:
+Current reserved interfaces:
 
 1. `statistics_catalog.h`
 2. `cardinality_estimator.h`
@@ -110,19 +198,26 @@ Planned interfaces:
 5. `plan_cache.h`
 6. `explain_formatter.h`
 
-### `src/storage`
+Current optimizer boundary direction includes:
 
-Planned placement and costing interfaces:
-
-1. `tablespace.h`
-2. `storage_class.h`
-3. `storage_cost_profile.h`
+1. statistics refresh boundaries
+2. cardinality estimation boundaries
+3. access-path enumeration boundaries
+4. costing boundaries
+5. plan-cache lookup boundaries
+6. explain-formatting boundaries
 
 ### `src/catalog`
 
-Planned storage-metadata interface:
+Current reserved storage-metadata interface:
 
 1. `tablespace_catalog.h`
+
+Current catalog boundary direction includes:
+
+1. tablespace lookup by logical identity
+2. tablespace lookup by logical name
+3. catalog refresh boundaries for placement metadata
 
 ### `src/common`
 
@@ -130,13 +225,42 @@ Shared concurrency support will later also include wait-event classification for
 
 Shared concurrency support will later also include client and remote wait classes.
 
+Shared concurrency support will later also include diagnostic wait or backpressure classification.
+
 Shared memory-governance support will later also include memory-pool classification types.
+
+Current shared memory-pool classification includes:
+
+1. `kInstanceShared`
+2. `kDatabaseShared`
+3. `kSessionPrivate`
+4. `kTransactionPrivate`
+5. `kAgentRuntime`
+6. `kQueryWork`
+7. `kUtilityWork`
+8. `kExchangeBuffer`
+9. `kPlanCache`
+10. `kCatalogCache`
+11. `kLockMemory`
+12. `kBufferPool`
+13. `kDiagnosticBuffer`
+14. `kDiagnosticEmergency`
 
 Shared runtime support will later also include session-state and execution-role classification types.
 
-Shared storage support will later also include tablespace and storage-cost identity aliases.
+Current shared diagnostic support includes:
 
-Shared storage support will later also include `TupleId` and `PageId` aliases.
+1. `DiagnosticSequence`
+2. `DiagnosticSeverity`
+3. `DiagnosticRecordHeader`
+
+Current shared storage support includes:
+
+1. `TablespaceId`
+2. `StorageClassId`
+3. `StorageCostProfileId`
+4. `TupleId`
+5. `PageId`
 
 ### Reserved Day 1 module boundaries
 

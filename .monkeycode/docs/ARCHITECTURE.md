@@ -4,6 +4,8 @@
 
 The repository is in the Day 1 bootstrap stage for a C++ relational database engine. The implemented repository structure now matches the Day 1 directory-layout scaffold required by task `1.1` of the Day 1 runtime-foundation specification.
 
+Repository-level architecture notes are now also published in `docs/architecture/day1-runtime-model.md`.
+
 ## Active Repository Layout
 
 ```text
@@ -49,6 +51,8 @@ The runtime direction now also treats `Session` and `Agent` as different resourc
 2. `Agent` is pooled execution capacity attached only while work is active
 3. future coordinator and subagent roles are execution roles carried by agents rather than permanent client-thread ownership
 
+The runtime direction now also reserves a dedicated asynchronous diagnostic logging subsystem.
+
 ## Concurrency Domains
 
 The architecture now distinguishes three different concurrency domains:
@@ -64,6 +68,8 @@ This split is based on DB2 lock and latch design lessons:
 3. parallel execution queues can become their own contention domain and must be treated explicitly by the executor and optimizer
 
 The wait model also needs room for client-idle and future remote or partition-coordination waits so that session state and worker occupancy remain measurable as different resources.
+
+The wait and observability model now also needs room for diagnostic backlog and suppression state so that logging storms remain visible without blocking foreground work.
 
 ## Optimization and Memory Governance
 
@@ -100,6 +106,8 @@ The future memory model is intended to distinguish:
 The instance will later need a memory broker or governor, and each database runtime will later own named shared pools such as plan cache, catalog cache, lock memory, and buffer-pool bindings.
 
 The memory model now also reserves separate durable session memory, transaction memory, transient agent runtime memory, and future exchange-buffer memory.
+
+The memory model now also reserves bounded diagnostic buffer memory and crash-path emergency logging memory.
 
 ## Storage Placement and I/O Costing
 
@@ -162,6 +170,30 @@ The future engine should support:
 3. future partition-local agent pools for partitioned database execution
 4. fragment-oriented execution APIs that can evolve from single-node to partitioned routing
 
+## Diagnostic Logging Direction
+
+The runtime now reserves a Db2-inspired diagnostic history stream with async write isolation.
+
+### Logging service direction
+
+The future engine should support:
+
+1. a dedicated `DiagnosticLogService`
+2. bounded in-memory publication buffers for diagnostic records
+3. a single member-local flusher worker per runtime logging domain
+4. append-only member-local diagnostic log files kept open during normal service
+
+### Operational resilience direction
+
+The future engine should support:
+
+1. structured record metadata including sequence, time, severity, component, worker identity, and probe site
+2. suppression and rate limiting for repeated client, SSL, and network failure storms
+3. explicit drop accounting when buffers overflow or records are sampled away
+4. crash-path emergency flush behavior using preallocated memory only
+
+This direction keeps troubleshooting value high while protecting critical code paths from file-lock and open-close logging stalls.
+
 ## Module Responsibilities
 
 ### `src/common`
@@ -179,9 +211,13 @@ This module will hold the memory-context abstractions and related allocation inf
 
 It will later also host memory-governance interfaces such as shared memory-pool classes and memory-broker boundaries.
 
+It will later also host bounded diagnostic-buffer and emergency-buffer memory policy boundaries.
+
 ### `src/runtime`
 
 This module will hold instance lifecycle, database lifecycle, EDU abstractions, session state, agent execution state, agent-pool boundaries, service management, interrupt handling, and runtime registries.
+
+It will later also host diagnostic-log service coordination, structured publish APIs, flusher lifecycle hooks, and log-health observability.
 
 ### `src/lock`
 
@@ -200,6 +236,12 @@ It will later also host stable tuple and page identity concepts, heap-row indire
 This module will later contain explicit parallel exchange structures such as table queues and parallel execution policy objects. Queue contention is part of execution design and optimizer cost modeling.
 
 It will later also host coordinator-facing execution-fragment boundaries and future worker-fragment control vocabulary.
+
+It may later emit structured diagnostic storm summaries for queue overload and execution-fragment failures through the shared logging service.
+
+### `src/catalog`
+
+This module will later continue to host catalog metadata and may also participate in member-local diagnostic metadata lookup for database, member, and object identity decoration.
 
 ### `src/optimizer`
 

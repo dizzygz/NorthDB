@@ -23,6 +23,7 @@ The Day 1 runtime foundation introduces:
 12. Reserved storage-placement concepts that expose optimizer-visible I/O cost surfaces through tablespaces and storage classes
 13. A pooled session and agent model that separates connected client state from leased execution capacity
 14. Reserved coordinator and subagent vocabulary for future parallel and partitioned execution
+15. An asynchronous diagnostic logging model that preserves troubleshooting value without blocking critical foreground code paths
 
 ## Architecture
 
@@ -39,6 +40,7 @@ graph TD
     F --> I["Database Registry"]
     F --> J["Global Memory Manager"]
     F --> V["Memory Broker"]
+    F --> AE["Diagnostic Log Service"]
     I --> K["Database Runtime"]
     K --> L["Transaction Manager"]
     K --> M["Lock Manager"]
@@ -56,6 +58,9 @@ graph TD
     R --> AD["Execution Fragments"]
     O --> U["Buffer Metadata Latches"]
     H --> P["Background EDUs"]
+    AE --> AF["Diagnostic Ring Buffers"]
+    AE --> AG["Diagnostic Flusher EDU"]
+    AE --> AH["Member-local Diag Files"]
     G --> D
     G --> P
 ```
@@ -99,6 +104,7 @@ The engine must also treat optimizer intelligence and memory governance as first
 4. **Storage placement metadata** determines how I/O cost enters access-path selection
 5. **Stable tuple and index identity** determine how heap movement, fragmentation, and deferred maintenance preserve lookup correctness
 6. **Clustering and maintenance metadata** determine how physical organization decay enters planning and background utility work
+7. **Diagnostic event buffering and suppression** determine whether troubleshooting remains available during client, network, or I/O fault storms
 
 ## Repository Layout
 
@@ -167,6 +173,7 @@ Additional reserved Day 1 concepts:
 1. `MemoryBroker`
 2. instance-shared memory classes
 3. utility-reservation and query-grant policy hooks
+4. `DiagnosticLogService`
 
 ### 2. `DatabaseRuntime`
 
@@ -203,6 +210,7 @@ Additional reserved Day 1 concepts:
 2. `PlanCache`
 3. `StatisticsCatalog`
 4. `TablespaceCatalog`
+5. member-local diagnostic file identity
 
 ### 3. `EDU`
 
@@ -231,6 +239,7 @@ Background EDU examples:
 5. `DeadlockDetectorEDU`
 6. `RecoveryMasterEDU`
 7. `RecoveryWorkerEDU`
+8. `DiagnosticFlusherEDU`
 
 Core interface:
 
@@ -311,6 +320,37 @@ Reserved future concepts:
 3. `ExecutionFragment`
 4. `SubagentRole`
 5. `PartitionAgentPool`
+
+### 5B. `DiagnosticLogService`
+
+`DiagnosticLogService` is the asynchronous diagnostic logging subsystem for runtime, engine, and client-facing fault records.
+
+Responsibilities:
+
+1. Accept structured diagnostic event publication from foreground and background producers
+2. Reserve slots in bounded preallocated buffers without file open or close operations on producer threads
+3. Assign stable sequence numbers and preserve event provenance metadata for later investigation
+4. Flush diagnostic records to member-local append-only log files by time, space, or severity-triggered policy
+5. Apply suppression, rate limiting, and overflow policy during repetitive event storms
+6. Record explicit drop, suppression, and backlog diagnostics when loss or sampling occurs
+7. Support crash-path emergency flush with preallocated memory only
+
+Design principles:
+
+1. Foreground logging must be non-blocking with respect to diagnostic file I/O and file locking
+2. Producer publication must rely on bounded preallocated memory and lock-free or near-lock-free slot reservation
+3. Investigation quality must depend on structured metadata rather than incidental file write order alone
+4. High-volume client and SSL failure floods must degrade into suppression summaries rather than engine-wide stalls
+5. Diagnostic logging must stay member-local in future multinode deployments
+
+Reserved future concepts:
+
+1. `DiagnosticRecord`
+2. `DiagnosticRingBuffer`
+3. `DiagnosticPublishSlot`
+4. `DiagnosticFlusherPolicy`
+5. `DiagnosticSuppressionKey`
+6. `DiagnosticDropAccounting`
 
 ### 6. Logical locking model
 
@@ -485,6 +525,8 @@ Named memory classes:
 6. `QueryWorkMemory`
 7. `UtilityWorkMemory`
 8. `ExchangeBufferMemory`
+9. `DiagnosticBufferMemory`
+10. `DiagnosticEmergencyMemory`
 
 Design principles:
 
@@ -494,6 +536,7 @@ Design principles:
 4. Plan cache and catalog cache must be modeled as explicit shared consumers, not incidental allocations
 5. Durable session memory must stay distinct from transient agent runtime memory
 6. Future exchange and transport buffers must remain explicit consumers for parallel and partitioned execution
+7. Diagnostic publication and crash-flush memory must remain explicit bounded shared consumers
 
 Reserved shared-memory pool examples:
 
@@ -502,6 +545,8 @@ Reserved shared-memory pool examples:
 3. catalog cache
 4. lock memory
 5. utility coordination memory
+6. diagnostic ring buffers
+7. diagnostic emergency buffer
 
 ### 12. `MemoryContext`
 
@@ -533,6 +578,7 @@ Responsibilities:
 2. Start services in a defined order
 3. Stop services in a defined order
 4. Propagate failures into runtime state
+5. Start the diagnostic flusher before normal foreground workload admission
 
 ### 14. `RuntimeRegistry` and `InterruptToken`
 
@@ -547,6 +593,7 @@ The runtime registry and future diagnostics model must classify waits by domain,
 5. log flush waits
 6. client waits
 7. remote waits
+8. diagnostic backpressure waits reserved for maintenance-only paths
 
 Tracked entity classes:
 
@@ -558,6 +605,17 @@ Tracked entity classes:
 6. EDU
 7. Coordinator context
 8. Execution fragment
+9. Diagnostic flusher
+
+The runtime registry and diagnostics model must also track:
+
+1. diagnostic queue occupancy
+2. diagnostic records published
+3. diagnostic records flushed
+4. diagnostic records suppressed
+5. diagnostic records dropped
+6. diagnostic flush latency
+7. diagnostic backlog age
 
 `InterruptToken` carries runtime cancel and timeout requests.
 
@@ -574,6 +632,7 @@ using SessionId = uint64_t;
 using TransactionId = uint64_t;
 using QueryId = uint64_t;
 using EduId = uint64_t;
+using DiagnosticSequence = uint64_t;
 ```
 
 ### Wait-event vocabulary
@@ -587,7 +646,46 @@ enum class WaitEventClass {
     kIo,
     kLogFlush,
     kClient,
-    kRemote
+    kRemote,
+    kDiagnostic
+};
+```
+
+### Reserved diagnostic-severity vocabulary
+
+```cpp
+enum class DiagnosticSeverity {
+    kDebug,
+    kInfo,
+    kEvent,
+    kWarn,
+    kError,
+    kFatal
+};
+```
+
+### Reserved diagnostic-record header vocabulary
+
+```cpp
+struct DiagnosticRecordHeader {
+    DiagnosticSequence global_sequence;
+    DiagnosticSequence member_sequence;
+    std::uint64_t event_time_unix_micros;
+    std::uint64_t event_time_monotonic_nanos;
+    DiagnosticSeverity severity;
+    WaitEventClass wait_class;
+    InstanceId instance_id;
+    DatabaseId database_id;
+    SessionId session_id;
+    QueryId query_id;
+    EduId edu_id;
+    std::uint32_t member_id;
+    std::uint32_t process_id;
+    std::uint32_t thread_id;
+    std::uint32_t component_id;
+    std::uint32_t function_id;
+    std::uint32_t probe_id;
+    std::uint32_t flags;
 };
 ```
 
@@ -606,7 +704,9 @@ enum class MemoryPoolClass {
     kPlanCache,
     kCatalogCache,
     kLockMemory,
-    kBufferPool
+    kBufferPool,
+    kDiagnosticBuffer,
+    kDiagnosticEmergency
 };
 ```
 
@@ -749,6 +849,8 @@ InstanceMemoryContext
 12. Every future secondary-index lookup must preserve correctness through tuple revalidation when physical row placement can change independently from index cleanup.
 13. Every connected session may exist without a continuously attached agent.
 14. Every coordinator role must be bound to an active request rather than to a permanent worker identity.
+15. Every published diagnostic record must receive a stable sequence number before it becomes visible to the flusher.
+16. Foreground diagnostic publication must not require diagnostic file lock acquisition.
 
 ### C++ ownership rules
 
@@ -767,6 +869,8 @@ InstanceMemoryContext
 6. Plan cache and statistics changes later require explicit invalidation or refresh hooks.
 7. Storage-cost metadata changes later require explicit plan-review or invalidation hooks.
 8. Agent detach and reattach boundaries must preserve session and transaction correctness.
+9. Diagnostic publication must remain available during diagnostic file rotation and transient file I/O stalls through bounded buffering.
+10. Suppression and drop summaries must be emitted as explicit diagnostic records when normal repetitive records are curtailed.
 
 ### Concurrency-control invariants
 
@@ -779,6 +883,7 @@ InstanceMemoryContext
 7. Access-path costing later depends on optimizer-visible clustering and fragmentation signals for heap and index access.
 8. Partitioned-table access planning later distinguishes local partitioned indexes from future global index designs.
 9. Future coordinator or subagent execution must preserve explicit fragment boundaries across local parallel or partitioned execution.
+10. Diagnostic logging paths must not introduce unbounded latch or file-lock contention into normal connection handling or critical execution paths.
 
 ## Error Handling
 
@@ -799,6 +904,7 @@ InstanceMemoryContext
 2. Parallel queue overload or queue shutdown must surface a dedicated execution failure status.
 3. Future stale secondary-index entries must surface through bounded probe revalidation rather than silent wrong-row visibility.
 4. Agent-pool exhaustion or admission delay must surface through explicit scheduling and wait diagnostics.
+5. Diagnostic queue saturation must surface through explicit drop or suppression accounting rather than foreground indefinite waiting.
 
 ### Optimization and memory-governance errors
 
@@ -806,6 +912,12 @@ InstanceMemoryContext
 2. Memory-grant denial later must surface as an explicit execution status or a spill path decision.
 3. Storage-profile misconfiguration later must surface through explainable cost shifts and plan-drift diagnostics.
 4. Cleanup backlog, fragmentation growth, and clustering decay later must surface through maintenance and plan diagnostics.
+
+### Diagnostic logging errors
+
+1. Diagnostic file I/O stalls must degrade into buffered backlog growth, suppression, and drop accounting before they affect foreground request progress.
+2. Diagnostic record storms from repeated client, SSL, or network failures must degrade into bounded repeated-event summaries.
+3. Diagnostic crash flush must avoid dynamic allocation and non-essential lock acquisition.
 
 ### Interruption errors
 
@@ -826,6 +938,7 @@ Required Day 1 unit-test targets:
 6. Service manager start and stop ordering
 7. shared identity and status types
 8. future memory-pool and wait-event type stability once the reserved interfaces exist
+9. future diagnostic record ordering, suppression, and overflow-policy stability once the reserved interfaces exist
 
 ### Example test names
 
@@ -836,6 +949,8 @@ Required Day 1 unit-test targets:
 5. `InterruptToken_RequestsCancel`
 6. `Agent_TransitionsIdleAssignedRunningFinished`
 7. `ServiceManager_StartsServicesInOrder`
+8. `DiagnosticLogService_PreservesSequenceAcrossAsyncFlush`
+9. `DiagnosticLogService_EmitsSuppressionSummary`
 
 ### Scope exclusions for Day 1
 
@@ -847,6 +962,7 @@ The following are intentionally out of scope for Day 1 implementation:
 4. Query optimizer internals
 5. Lock table implementation
 6. Executor operator implementation
+7. Full diagnostic logger implementation
 
 The following design obligations are introduced for later phases:
 
@@ -856,6 +972,7 @@ The following design obligations are introduced for later phases:
 4. Statistics-driven optimizer implementation with explainable access-path selection
 5. Memory-broker and named memory-pool governance for shared and transient consumers
 6. Tablespace and storage-class abstractions with optimizer-visible I/O cost parameters
+7. Asynchronous diagnostic logging with suppression, drop accounting, crash flush, and member-local file partitioning
 
 ## References
 
