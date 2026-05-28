@@ -11,6 +11,7 @@ int main() {
     static_assert(std::is_same_v<northdb::common::SessionId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::TransactionId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::QueryId, std::uint64_t>);
+    static_assert(std::is_same_v<northdb::common::UtilityJobId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::EduId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::TablespaceId, std::uint64_t>);
     static_assert(std::is_same_v<northdb::common::StorageClassId, std::uint64_t>);

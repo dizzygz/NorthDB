@@ -35,6 +35,27 @@ enum class AgentState {
     kFailed
 };
 
+enum class SessionState {
+    kConnected,
+    kIdle,
+    kWaiting,
+    kDetachedWaiting,
+    kActive,
+    kCancelling,
+    kClosed,
+    kFailed
+};
+
+enum class ExecutionRole {
+    kForeground,
+    kCoordinator,
+    kSubagent,
+    kUtility,
+    kLogFlusher,
+    kRecovery,
+    kRemote
+};
+
 constexpr bool IsValidTransition(InstanceState from, InstanceState to) noexcept {
     switch (from) {
     case InstanceState::kCreated:
@@ -100,6 +121,36 @@ constexpr bool IsValidTransition(AgentState from, AgentState to) noexcept {
     case AgentState::kFinished:
         return to == AgentState::kIdle || to == AgentState::kFailed;
     case AgentState::kFailed:
+        return false;
+    }
+
+    return false;
+}
+
+constexpr bool IsValidTransition(SessionState from, SessionState to) noexcept {
+    switch (from) {
+    case SessionState::kConnected:
+        return to == SessionState::kIdle || to == SessionState::kClosed ||
+               to == SessionState::kFailed;
+    case SessionState::kIdle:
+        return to == SessionState::kWaiting || to == SessionState::kActive ||
+               to == SessionState::kClosed || to == SessionState::kFailed;
+    case SessionState::kWaiting:
+        return to == SessionState::kDetachedWaiting || to == SessionState::kActive ||
+               to == SessionState::kCancelling || to == SessionState::kClosed ||
+               to == SessionState::kFailed;
+    case SessionState::kDetachedWaiting:
+        return to == SessionState::kActive || to == SessionState::kCancelling ||
+               to == SessionState::kClosed || to == SessionState::kFailed;
+    case SessionState::kActive:
+        return to == SessionState::kIdle || to == SessionState::kWaiting ||
+               to == SessionState::kCancelling || to == SessionState::kClosed ||
+               to == SessionState::kFailed;
+    case SessionState::kCancelling:
+        return to == SessionState::kIdle || to == SessionState::kClosed ||
+               to == SessionState::kFailed;
+    case SessionState::kClosed:
+    case SessionState::kFailed:
         return false;
     }
 

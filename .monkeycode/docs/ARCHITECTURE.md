@@ -71,6 +71,8 @@ The wait model also needs room for client-idle and future remote or partition-co
 
 The wait and observability model now also needs room for diagnostic backlog and suppression state so that logging storms remain visible without blocking foreground work.
 
+The runtime synchronization model now also reserves event-style waitpost channels for service readiness, session-agent handoff, flusher wakeup, and shutdown coordination.
+
 ## Optimization and Memory Governance
 
 The architecture now also treats optimization and memory governance as core design domains.
@@ -160,6 +162,7 @@ The future engine should support:
 2. a bounded pool of foreground agents
 3. explicit session-to-agent attachment during active work
 4. detach-capable waits and post-response idle behavior
+5. event-style waitpost channels for request completion, handoff notification, and cancel acknowledgement
 
 ### Coordinator and worker direction
 
@@ -193,6 +196,18 @@ The future engine should support:
 4. crash-path emergency flush behavior using preallocated memory only
 
 This direction keeps troubleshooting value high while protecting critical code paths from file-lock and open-close logging stalls.
+
+## WaitPost Direction
+
+The runtime now also reserves a Db2-inspired `WaitPost` event primitive for runtime coordination.
+
+The future engine should support:
+
+1. waiter intent published in shared state before blocking
+2. blocking wait without polling loops
+3. sticky-event and auto-reset wakeup modes
+4. explicit reset and generation-based stale-wakeup protection
+5. separate ownership guards around lifecycle-sensitive reset and post behavior
 
 ## Module Responsibilities
 

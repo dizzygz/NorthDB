@@ -30,3 +30,4 @@ Current bootstrap verification uses CMake and `ctest`.
 Bootstrap steps are documented in `docs/architecture/bootstrap.md`.
 Updated at: 2026-05-26 00:00:01
 Updated at: 2026-05-27 00:00:01
+Updated at: 2026-05-28 00:00:01

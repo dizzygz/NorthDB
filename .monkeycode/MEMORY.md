@@ -126,6 +126,14 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - Use English for all user-facing interaction content in this project thread when producing project artifacts or structured task communication.
   - Use English for all design documents and related specification artifacts.
 
+[English-only conversation]
+- Date: 2026-05-27
+- Context: User clarified that all conversation must always be in English
+- Instructions:
+  - Use English for all conversation in this repository context.
+  - Use English for progress updates, final responses, planning, and task discussions.
+  - Keep project artifacts and direct conversation aligned under the same English-only rule.
+
 [DB2 diagnostic logging guidance]
 - Date: 2026-05-24
 - Context: Derived from DB2 diagnostic log documentation and synchronous logging failure analysis during runtime observability design
@@ -137,3 +145,15 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - Use suppression, rate limiting, and explicit drop accounting to survive repeated client, SSL, and network failure storms.
   - Keep diagnostic logs member-local in the distributed roadmap and rely on structured correlation metadata rather than file write order alone.
   - Reserve crash-path emergency flush behavior that avoids dynamic allocation and non-essential lock acquisition.
+
+[DB2 waitpost synchronization guidance]
+- Date: 2026-05-27
+- Context: User shared a DB2 waitpost analysis for IPC and thread synchronization during runtime design discussion
+- Category: 排错调试
+- Instructions:
+  - Reuse the waitpost design pattern as an event-style wait and post primitive rather than a request-response messaging API.
+  - Keep waiter intent visible through shared state such as waiter counts or wait flags instead of requiring explicit request messages.
+  - Prefer kernel-blocking waits with wakeup by post signal over polling loops for runtime synchronization paths.
+  - Separate a short critical-section lock for wait-state bookkeeping from higher-level lifecycle latches that prevent post and reset races.
+  - Support both sticky event-semaphore semantics and auto-reset wakeup semantics where useful.
+  - Reserve explicit reset and queue-drain behavior for reused wait channels so stale wakeups cannot leak across lifecycle boundaries.

@@ -23,12 +23,13 @@ Defined identity aliases:
 3. `SessionId`
 4. `TransactionId`
 5. `QueryId`
-6. `EduId`
-7. `TablespaceId`
-8. `StorageClassId`
-9. `StorageCostProfileId`
-10. `TupleId`
-11. `PageId`
+6. `UtilityJobId`
+7. `EduId`
+8. `TablespaceId`
+9. `StorageClassId`
+10. `StorageCostProfileId`
+11. `TupleId`
+12. `PageId`
 
 Defined shared status type:
 
@@ -98,6 +99,14 @@ Current interfaces:
 8. `states.h`
 9. `diagnostic_flush_policy.h`
 10. `diagnostic_log_service.h`
+11. `wait_post.h`
+12. `process_local_wait_post.h`
+
+Planned Day 2 runtime interfaces also include:
+
+1. `wait_post.h`
+2. `SessionState`
+3. `ExecutionRole`
 
 Current reserved diagnostic runtime direction includes:
 
@@ -112,6 +121,13 @@ Planned runtime direction also includes:
 3. future session-state and execution-role types
 4. future `DiagnosticLogService`
 5. future structured diagnostic publish and flush policy types
+6. event-style `WaitPost` coordination channels for service, session, agent, and diagnostic wakeup flows
+
+Current bootstrap waitpost implementation includes:
+
+1. `ProcessLocalWaitPost`
+2. process-local blocking waits via standard C++ mutex and condition-variable primitives
+3. immediate wakeup after posted state becomes visible within one process
 
 Current instance boundary includes:
 
@@ -137,8 +153,18 @@ Current supporting runtime vocabulary includes:
 1. `InstanceState`
 2. `DatabaseState`
 3. `AgentState`
-4. `InterruptState`
-5. `EDUType`
+4. `SessionState`
+5. `ExecutionRole`
+6. `InterruptState`
+7. `EDUType`
+8. `WaitPost::Mode`
+
+Current runtime-registry direction includes:
+
+1. explicit session, agent, EDU, transaction, query, and utility-job handles
+2. ownership lookup for transaction-to-session and query-to-session relationships
+3. ownership lookup for utility-job-to-EDU relationships
+4. explicit session-to-agent attachment tracking
 
 ### `src/lock`
 

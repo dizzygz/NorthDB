@@ -20,6 +20,8 @@ Repository-facing bootstrap notes are published in `docs/architecture/bootstrap.
 1. `.monkeycode/specs/2026-05-24-day1-runtime-foundation/requirements.md`
 2. `.monkeycode/specs/2026-05-24-day1-runtime-foundation/design.md`
 3. `.monkeycode/specs/2026-05-24-day1-runtime-foundation/tasklist.md`
+4. `.monkeycode/specs/2026-05-27-day2-runtime-core/design.md`
+5. `.monkeycode/specs/2026-05-27-day2-runtime-core/tasklist.md`
 
 ## Day 1 Task Scope
 
@@ -73,6 +75,8 @@ The current design baseline distinguishes three concurrency domains:
 Future implementation tasks should preserve this split in APIs, ownership, and diagnostics.
 
 Future implementation tasks should also keep session wait state and agent occupancy as separate observable concepts.
+
+Future implementation tasks should also use event-style `WaitPost` coordination for wakeup and lifecycle synchronization where blocking wait semantics are required.
 
 Future implementation tasks should also keep diagnostic publication off foreground file I/O paths.
 

@@ -41,3 +41,4 @@ tools/
 ## Specification Packages
 
 1. `../specs/2026-05-24-day1-runtime-foundation/` - Day 1 runtime foundation requirements, design, and task list
+2. `../specs/2026-05-27-day2-runtime-core/` - Day 2 runtime core design and task list for runtime coordination, waitpost semantics, and bootstrap integration

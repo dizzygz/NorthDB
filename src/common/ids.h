@@ -9,6 +9,7 @@ using DatabaseId = std::uint64_t;
 using SessionId = std::uint64_t;
 using TransactionId = std::uint64_t;
 using QueryId = std::uint64_t;
+using UtilityJobId = std::uint64_t;
 using EduId = std::uint64_t;
 using TablespaceId = std::uint64_t;
 using StorageClassId = std::uint64_t;
